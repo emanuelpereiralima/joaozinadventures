@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Joãozin Adventure's</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #0f0f0f;
+            color: white;
+            overflow: hidden;
+            touch-action: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 500px;
+            margin: 0 auto;
+            background: #1a1a1a;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            transition: opacity 0.3s;
+        }
+
+        .interactive {
+            pointer-events: auto;
+        }
+
+        /* MENU STYLES */
+        .menu-btn {
+            background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 15px 0;
+            width: 100%;
+            font-size: 14px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            text-shadow: 1px 1px 0px #000;
+            box-shadow: 0 4px 0 #1e3a8a, 0 5px 10px rgba(0,0,0,0.5);
+            transition: transform 0.1s;
+            font-family: 'Press Start 2P', cursive;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .menu-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #1e3a8a;
+        }
+
+        .menu-btn::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(rgba(255,255,255,0.2), transparent);
+            pointer-events: none;
+        }
+
+        .btn-purple { background: linear-gradient(180deg, #8b5cf6 0%, #6d28d9 100%); box-shadow: 0 4px 0 #4c1d95; }
+        .btn-green { background: linear-gradient(180deg, #22c55e 0%, #15803d 100%); box-shadow: 0 4px 0 #14532d; }
+        .btn-red { background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%); box-shadow: 0 4px 0 #7f1d1d; }
+
+        /* UPLOAD BUTTON */
+        .upload-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        
+        .upload-btn {
+            border: 2px dashed #fbbf24;
+            color: #fbbf24;
+            background: rgba(0,0,0,0.5);
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 10px;
+            text-align: center;
+        }
+
+        .upload-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        #face-preview-container {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 4px solid #fbbf24;
+            overflow: hidden;
+            margin-bottom: 10px;
+            background: #333;
+            box-shadow: 0 0 20px #fbbf24;
+        }
+        
+        #face-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* CONTROLS */
+        .controls-overlay {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 30px;
+            pointer-events: auto;
+            z-index: 20;
+        }
+
+        .ctrl-btn {
+            width: 70px;
+            height: 70px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(4px);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(255,255,255,0.5);
+            font-size: 24px;
+            color: white;
+            user-select: none;
+            transition: background 0.1s;
+        }
+        
+        .ctrl-btn:active { background: rgba(255, 255, 255, 0.4); }
+
+        .hidden { display: none !important; }
+
+        /* TETRIS SPECIFIC */
+        #tetris-ui { pointer-events: none; }
+        #tetris-grid {
+            display: grid;
+            grid-template-rows: repeat(20, 1fr);
+            grid-template-columns: repeat(10, 1fr);
+            gap: 1px;
+            background: rgba(0,0,0,0.8);
+            border: 4px solid #4ade80;
+            width: 250px;
+            height: 500px;
+            margin: 0 auto;
+            margin-top: 40px;
+        }
+        .tetris-cell { width: 100%; height: 100%; background: #111; opacity: 0.7; }
+        .t-money { 
+            background: #166534; 
+            border: 1px solid #4ade80; 
+            position: relative;
+            opacity: 1;
+            box-shadow: inset 0 0 5px #000;
+        }
+        .t-money::after { 
+            content: '$'; 
+            color: #86efac; 
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 12px; 
+            font-weight: bold;
+            position: absolute; 
+            top: 50%; left: 50%; 
+            transform: translate(-50%, -50%); 
+        }
+
+        /* HACKER GAME */
+        .hacker-theme {
+            font-family: 'Share Tech Mono', monospace !important;
+            color: #00ff00 !important;
+            text-shadow: 0 0 5px #00ff00;
+        }
+        .hacker-btn {
+            background: black;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            font-family: 'Share Tech Mono', monospace;
+            padding: 15px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        .hacker-btn:active { background: #003300; }
+        
+        .back-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: 'Press Start 2P';
+            font-size: 10px;
+            z-index: 50;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #991b1b;
+        }
+        .back-btn:active { transform: translateY(3px); box-shadow: none; }
+
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- UI: MAIN MENU -->
+    <div id="menu-screen" class="ui-layer interactive" style="background: rgba(10,10,10,0.95);">
+        <h1 class="text-yellow-400 text-3xl mb-6 text-center" style="text-shadow: 4px 4px 0 #b45309;">JOÃOZIN<br>ADVENTURE'S</h1>
+        
+        <!-- Avatar Section -->
+        <div class="flex flex-col items-center mb-6">
+            <div id="face-preview-container">
+                <img id="face-preview" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Joao" alt="Rosto do João">
+            </div>
+            <div class="upload-wrapper">
+                <button class="upload-btn">📷 CARREGAR FOTO</button>
+                <input type="file" id="photo-upload" accept="image/*">
+            </div>
+        </div>
+
+        <div class="w-full px-8 max-w-sm">
+            <button class="menu-btn btn-red" onclick="game.start(1)">
+                <i class="fas fa-motorcycle mr-2"></i> MOTO PAPY
+            </button>
+            <button class="menu-btn btn-blue" onclick="game.start(2)">
+                <i class="fas fa-cut mr-2"></i> NA RÉGUA
+            </button>
+            <button class="menu-btn btn-green" onclick="game.start(3)">
+                <i class="fas fa-dollar-sign mr-2"></i> MONEY TETRIS
+            </button>
+            <button class="menu-btn btn-purple" onclick="game.start(4)">
+                <i class="fas fa-terminal mr-2"></i> HACKER
+            </button>
+        </div>
+        
+        <p class="text-[10px] text-gray-500 mt-4">v2.1 - Turbo & Keyboards</p>
+    </div>
+
+    <!-- UI: GAME OVER / WIN -->
+    <div id="result-screen" class="ui-layer interactive hidden" style="background: rgba(0,0,0,0.9);">
+        <h1 id="result-title" class="text-3xl mb-4">FIM DE JOGO</h1>
+        <p id="result-msg" class="text-xs mb-8 text-center px-8 leading-loose text-gray-300">Tente novamente!</p>
+        <button class="menu-btn btn-blue w-64" onclick="game.toMenu()">VOLTAR AO MENU</button>
+    </div>
+
+    <!-- GLOBAL BACK BUTTON (For games) -->
+    <button id="global-back-btn" class="back-btn hidden interactive" onclick="game.toMenu()">SAIR</button>
+
+    <!-- GAME 3 UI -->
+    <div id="tetris-ui" class="ui-layer hidden pointer-events-none">
+        <div id="tetris-grid"></div>
+        <div class="controls-overlay">
+            <div class="ctrl-btn interactive" ontouchstart="game3.move(-1)" onclick="game3.move(-1)"><i class="fas fa-arrow-left"></i></div>
+            <div class="ctrl-btn interactive" ontouchstart="game3.rotate()" onclick="game3.rotate()"><i class="fas fa-sync"></i></div>
+            <div class="ctrl-btn interactive" ontouchstart="game3.move(1)" onclick="game3.move(1)"><i class="fas fa-arrow-right"></i></div>
+            <div class="ctrl-btn interactive" ontouchstart="game3.drop()" onclick="game3.drop()"><i class="fas fa-arrow-down"></i></div>
+        </div>
+    </div>
+
+    <!-- GAME 4 UI -->
+    <div id="memory-ui" class="ui-layer interactive hidden flex-col hacker-theme bg-black">
+        <div class="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none" style="background: repeating-linear-gradient(0deg, transparent, transparent 2px, #00ff00 3px);"></div>
+        <h2 id="memory-instruction" class="text-xl mb-8 text-center animate-pulse">MEMORIZE A SEQUÊNCIA</h2>
+        <div id="memory-display" class="text-4xl font-bold mb-12 h-16 tracking-widest border border-green-500 p-4 w-64 text-center bg-green-900/20"></div>
+        <div id="memory-grid" class="hidden grid grid-cols-3 gap-2 w-64">
+            <!-- Buttons injected by JS -->
+        </div>
+    </div>
+
+    <!-- GENERIC CONTROLS (Game 1 & 2) -->
+    <div id="generic-controls" class="controls-overlay hidden">
+        <div class="ctrl-btn interactive" id="btn-left" 
+             ontouchstart="input.set(true, false)" ontouchend="input.set(false, false)" 
+             onmousedown="input.set(true, false)" onmouseup="input.set(false, false)">
+            <i class="fas fa-chevron-left"></i>
+        </div>
+        <div class="ctrl-btn interactive" id="btn-right" 
+             ontouchstart="input.set(false, true)" ontouchend="input.set(false, false)" 
+             onmousedown="input.set(false, true)" onmouseup="input.set(false, false)">
+            <i class="fas fa-chevron-right"></i>
+        </div>
+    </div>
+
+</div>
+
+<audio id="win-sound" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3"></audio>
+
+<script>
+/**
+ * JOÃOZIN ADVENTURE'S ENGINE 2.1
+ */
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+    canvas.width = 360; 
+    canvas.height = 640; 
+}
+window.addEventListener('resize', resize);
+resize();
+
+// --- STATE & ASSETS ---
+const state = {
+    screen: 'MENU', 
+    currentGame: 0,
+    joaoImage: null,
+};
+
+// --- PHOTO UPLOAD HANDLING ---
+document.getElementById('photo-upload').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = () => {
+                state.joaoImage = img;
+                document.getElementById('face-preview').src = event.target.result;
+            };
+            img.src = event.target.result;
+        }
+        reader.readAsDataURL(file);
+    }
+});
+
+if(!state.joaoImage) {
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.src = "https://api.dicebear.com/7.x/avataaars/svg?seed=Joao";
+    img.onload = () => state.joaoImage = img;
+}
+
+// --- INPUT SYSTEM ---
+const input = {
+    left: false,
+    right: false,
+    set: (l, r) => { input.left = l; input.right = r; }
+};
+
+// Enhanced Key Listener for All Games
+window.addEventListener('keydown', (e) => {
+    // Game 3 (Tetris) Specific Controls
+    if (state.currentGame === 3 && game3.active) {
+        if(e.key === 'ArrowLeft') game3.move(-1);
+        if(e.key === 'ArrowRight') game3.move(1);
+        if(e.key === 'ArrowUp') game3.rotate();
+        if(e.key === 'ArrowDown') game3.drop();
+        // Prevent scrolling with arrows
+        if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+        return;
+    }
+
+    // Generic Controls for Game 1 & 2
+    if(e.key === 'ArrowLeft') input.left = true;
+    if(e.key === 'ArrowRight') input.right = true;
+});
+
+window.addEventListener('keyup', (e) => {
+    if(e.key === 'ArrowLeft') input.left = false;
+    if(e.key === 'ArrowRight') input.right = false;
+});
+
+// --- HELPER: DRAW JOAO ---
+function drawFace(x, y, size) {
+    if (state.joaoImage) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x, y, size/2, 0, Math.PI*2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(state.joaoImage, x - size/2, y - size/2, size, size);
+        ctx.restore();
+        ctx.beginPath();
+        ctx.arc(x, y, size/2, 0, Math.PI*2);
+        ctx.strokeStyle = 'gold';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    } else {
+        ctx.fillStyle = '#fce';
+        ctx.beginPath(); ctx.arc(x, y, size/2, 0, Math.PI*2); ctx.fill();
+    }
+}
+
+function playWinSound() {
+    const audio = document.getElementById('win-sound');
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
+}
+
+// --- GAME 1: MOTO PASSENGER (Top Racer Style) ---
+const game1 = {
+    playerX: 0,
+    speed: 0,
+    baseObjSpeed: 0.01, // Starting slow
+    currentObjSpeed: 0.01,
+    obstacles: [],
+    active: false,
+    score: 0,
+
+    init: () => {
+        game1.playerX = 0;
+        game1.currentObjSpeed = 0.01;
+        game1.score = 0;
+        game1.obstacles = [];
+        game1.active = true;
+        document.getElementById('generic-controls').classList.remove('hidden');
+    },
+
+    update: () => {
+        if (!game1.active) return;
+
+        // Progressive Difficulty
+        game1.currentObjSpeed += 0.00001; // Slowly increase speed each frame
+
+        // Move Player X
+        if (input.left && game1.playerX > -1) game1.playerX -= 0.05;
+        if (input.right && game1.playerX < 1) game1.playerX += 0.05;
+
+        // Spawn Obstacles
+        if (Math.random() < 0.02) {
+            game1.obstacles.push({ x: (Math.random() * 2 - 1), z: 0, type: Math.random() > 0.5 ? 'car' : 'rock' });
+        }
+
+        // Move Obstacles
+        game1.obstacles.forEach((obs, i) => {
+            // Apply current progressive speed
+            obs.z += game1.currentObjSpeed; 
+            
+            // Collision Check
+            if (obs.z > 0.85 && obs.z < 0.95) {
+                if (Math.abs(obs.x - game1.playerX) < 0.3) {
+                    game.gameOver("Caiu da moto!");
+                }
+            }
+
+            if (obs.z > 1.2) {
+                game1.obstacles.splice(i, 1);
+                game1.score += 10;
+            }
+        });
+        
+        if (game1.score >= 500) game.victory("Chegou no baile!");
+    },
+
+    draw: () => {
+        // Sky
+        const grd = ctx.createLinearGradient(0, 0, 0, 200);
+        grd.addColorStop(0, "#000044");
+        grd.addColorStop(1, "#444488");
+        ctx.fillStyle = grd;
+        ctx.fillRect(0, 0, 360, 200);
+
+        // Ground
+        ctx.fillStyle = "#112211";
+        ctx.fillRect(0, 200, 360, 440);
+
+        const horizonY = 200;
+        const bottomY = 640;
+        const centerX = 180;
+
+        // Draw Road
+        ctx.fillStyle = "#555";
+        ctx.beginPath();
+        ctx.moveTo(centerX - 10, horizonY);
+        ctx.lineTo(centerX + 10, horizonY);
+        ctx.lineTo(360, bottomY);
+        ctx.lineTo(0, bottomY);
+        ctx.fill();
+
+        // Speed Lines (Visual effect of speed)
+        const time = Date.now() * (game1.currentObjSpeed * 100); 
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(centerX, horizonY);
+        ctx.lineTo(centerX, bottomY);
+        ctx.stroke();
+
+        // Draw Obstacles
+        game1.obstacles.sort((a,b) => a.z - b.z);
+        game1.obstacles.forEach(obs => {
+            const scale = 0.1 + (obs.z * 1.5);
+            const screenY = horizonY + (obs.z * (bottomY - horizonY));
+            const screenX = centerX + (obs.x * (180 * obs.z));
+            const w = 40 * scale;
+            const h = 30 * scale;
+
+            if (obs.type === 'car') {
+                ctx.fillStyle = 'red';
+                ctx.fillRect(screenX - w/2, screenY - h, w, h);
+                ctx.fillStyle = 'yellow';
+                ctx.fillRect(screenX - w/2 + 2, screenY - 5, 5*scale, 5*scale);
+                ctx.fillRect(screenX + w/2 - 7*scale, screenY - 5, 5*scale, 5*scale);
+            } else {
+                ctx.fillStyle = 'gray';
+                ctx.beginPath(); ctx.arc(screenX, screenY, w/2, 0, Math.PI); ctx.fill();
+            }
+        });
+
+        // Player
+        const playerScreenX = centerX + (game1.playerX * 150);
+        const playerY = 580;
+        ctx.fillStyle = '#333';
+        ctx.fillRect(playerScreenX - 15, playerY - 20, 30, 40);
+        ctx.fillStyle = '#888'; 
+        ctx.fillRect(playerScreenX + 15, playerY, 5, 20);
+        ctx.fillStyle = '#222';
+        ctx.beginPath(); ctx.arc(playerScreenX, playerY - 30, 12, 0, Math.PI*2); ctx.fill();
+        drawFace(playerScreenX, playerY - 55, 30);
+        ctx.fillStyle = 'blue';
+        ctx.fillRect(playerScreenX - 10, playerY - 40, 20, 15);
+
+        ctx.fillStyle = 'white';
+        ctx.font = '16px "Press Start 2P"';
+        ctx.fillText(`DIST: ${game1.score}m`, 20, 30);
+    }
+};
+
+// --- GAME 2: NA RÉGUA (Dodge from Center) ---
+const game2 = {
+    lane: 0,
+    targetLane: 0,
+    animX: 180,
+    objects: [],
+    timer: 1000,
+    active: false,
+    speedMultiplier: 1,
+
+    init: () => {
+        game2.lane = 0;
+        game2.animX = 180;
+        game2.objects = [];
+        game2.timer = 1500;
+        game2.active = true;
+        game2.speedMultiplier = 1; // Start normal speed
+        document.getElementById('generic-controls').classList.remove('hidden');
+    },
+
+    update: () => {
+        if(!game2.active) return;
+        game2.timer -= 1;
+        
+        // Increase difficulty
+        game2.speedMultiplier += 0.001; 
+
+        const destX = 180 + (game2.lane * 100);
+        game2.animX += (destX - game2.animX) * 0.2;
+
+        if(input.left) game2.lane = -1;
+        else if(input.right) game2.lane = 1;
+        else game2.lane = 0;
+        
+        if(Math.random() < 0.04) {
+            const type = Math.floor(Math.random() * 3) - 1; 
+            game2.objects.push({ lane: type, y: 200, scale: 0.1 });
+        }
+
+        game2.objects.forEach((obj, i) => {
+            // Objects get faster based on multiplier
+            const speed = (5 + (obj.scale * 10)) * game2.speedMultiplier;
+            obj.y += speed;
+            obj.scale += 0.02 * game2.speedMultiplier;
+
+            if(obj.y > 550 && obj.y < 600) {
+                if(obj.lane === game2.lane) {
+                    game.gameOver("Corte torto!");
+                }
+            }
+            if(obj.y > 650) game2.objects.splice(i, 1);
+        });
+
+        if(game2.timer <= 0) game.victory("O BRABO!");
+    },
+
+    draw: () => {
+        ctx.fillStyle = '#eee';
+        ctx.fillRect(0,0,360,640);
+        ctx.fillStyle = '#ddd';
+        ctx.fillRect(20, 20, 320, 200);
+
+        game2.objects.forEach(obj => {
+            const laneX = 180 + (obj.lane * 100 * obj.scale);
+            ctx.fillStyle = '#555';
+            ctx.font = `${30 * obj.scale}px Arial`;
+            ctx.fillText("✂️", laneX, obj.y);
+        });
+
+        ctx.fillStyle = '#333';
+        ctx.fillRect(game2.animX - 25, 500, 50, 140);
+        drawFace(game2.animX, 500, 60);
+
+        ctx.fillStyle = 'black';
+        ctx.font = '20px "Press Start 2P"';
+        ctx.fillText(`TEMPO: ${Math.floor(game2.timer/60)}`, 20, 40);
+    }
+};
+
+// --- GAME 3: MONEY TRIS ---
+const game3 = {
+    grid: [],
+    active: false,
+    currentPiece: null,
+    score: 0,
+    dropCounter: 0,
+    dropInterval: 30,
+
+    init: () => {
+        game3.grid = Array(20).fill().map(() => Array(10).fill(0));
+        game3.score = 0;
+        game3.active = true;
+        game3.spawnPiece();
+        document.getElementById('tetris-ui').classList.remove('hidden');
+    },
+
+    spawnPiece: () => {
+        const types = [[[1,1],[1,1]], [[1,1,1,1]], [[1,1,1],[0,1,0]], [[1,1,0],[0,1,1]]];
+        const shape = types[Math.floor(Math.random() * types.length)];
+        game3.currentPiece = { shape, x: 4, y: 0 };
+        if (game3.collide(game3.currentPiece.x, game3.currentPiece.y, game3.currentPiece.shape)) {
+            game.gameOver("Faliu!");
+        }
+    },
+
+    collide: (x, y, shape) => {
+        for(let r=0; r<shape.length; r++) {
+            for(let c=0; c<shape[r].length; c++) {
+                if (shape[r][c]) {
+                    let newX = x + c;
+                    let newY = y + r;
+                    if (newX < 0 || newX >= 10 || newY >= 20) return true;
+                    if (newY >= 0 && game3.grid[newY][newX]) return true;
+                }
+            }
+        }
+        return false;
+    },
+
+    merge: () => {
+        game3.currentPiece.shape.forEach((row, r) => {
+            row.forEach((val, c) => {
+                if(val) {
+                    let py = game3.currentPiece.y + r;
+                    if(py >= 0) game3.grid[py][game3.currentPiece.x + c] = 1;
+                }
+            });
+        });
+        game3.clearLines();
+        game3.spawnPiece();
+    },
+
+    clearLines: () => {
+        for(let r=game3.grid.length-1; r>=0; r--) {
+            if(game3.grid[r].every(v => v === 1)) {
+                game3.grid.splice(r, 1);
+                game3.grid.unshift(Array(10).fill(0));
+                game3.score += 100;
+                r++;
+            }
+        }
+        if(game3.score >= 1000) game.victory("Milionário!");
+    },
+
+    update: () => {
+        if (!game3.active) return;
+        game3.dropCounter++;
+        if (game3.dropCounter > game3.dropInterval) {
+            game3.drop();
+            game3.dropCounter = 0;
+        }
+        game3.renderDOM();
+    },
+
+    drop: () => {
+        if(!game3.active) return;
+        if (!game3.collide(game3.currentPiece.x, game3.currentPiece.y + 1, game3.currentPiece.shape)) {
+            game3.currentPiece.y++;
+        } else {
+            game3.merge();
+        }
+        game3.renderDOM();
+    },
+
+    move: (dir) => {
+        if(!game3.active) return;
+        if (!game3.collide(game3.currentPiece.x + dir, game3.currentPiece.y, game3.currentPiece.shape)) {
+            game3.currentPiece.x += dir;
+        }
+        game3.renderDOM();
+    },
+
+    rotate: () => {
+        if(!game3.active) return;
+        const rotated = game3.currentPiece.shape[0].map((_, i) => game3.currentPiece.shape.map(row => row[i]).reverse());
+        if (!game3.collide(game3.currentPiece.x, game3.currentPiece.y, rotated)) {
+            game3.currentPiece.shape = rotated;
+        }
+        game3.renderDOM();
+    },
+
+    renderDOM: () => {
+        const container = document.getElementById('tetris-grid');
+        container.innerHTML = '';
+        const displayGrid = JSON.parse(JSON.stringify(game3.grid));
+        
+        if(game3.currentPiece) {
+            game3.currentPiece.shape.forEach((row, r) => {
+                row.forEach((val, c) => {
+                    if(val) {
+                        let py = game3.currentPiece.y + r;
+                        let px = game3.currentPiece.x + c;
+                        if(py >=0 && py < 20 && px >= 0 && px < 10) displayGrid[py][px] = 2;
+                    }
+                });
+            });
+        }
+
+        displayGrid.forEach(row => {
+            row.forEach(cell => {
+                const div = document.createElement('div');
+                div.className = 'tetris-cell';
+                if(cell !== 0) div.classList.add('t-money');
+                container.appendChild(div);
+            });
+        });
+    },
+
+    draw: () => {
+        ctx.fillStyle = '#022c02';
+        ctx.fillRect(0,0,360,640);
+        drawFace(180, 50, 50);
+        ctx.fillStyle = '#4ade80';
+        ctx.font = '15px "Press Start 2P"';
+        ctx.fillText(`CAIXA: $${game3.score}`, 20, 100);
+    }
+};
+
+// --- GAME 4: HACKER SEQUENCE ---
+const game4 = {
+    sequence: [],
+    playerSequence: [],
+    chars: '01',
+    level: 1,
+    active: false,
+
+    init: () => {
+        game4.level = 1;
+        game4.active = true;
+        document.getElementById('memory-ui').classList.remove('hidden');
+        document.getElementById('memory-ui').style.display = 'flex';
+        game4.startRound();
+    },
+
+    startRound: () => {
+        game4.sequence = [];
+        game4.playerSequence = [];
+        const length = 3 + game4.level;
+        const chars = '0123456789ABCDEF';
+        
+        for(let i=0; i<length; i++) {
+            game4.sequence.push(chars[Math.floor(Math.random() * 16)]);
+        }
+
+        const display = document.getElementById('memory-display');
+        const instruction = document.getElementById('memory-instruction');
+        const grid = document.getElementById('memory-grid');
+        
+        grid.classList.add('hidden');
+        instruction.innerText = `HACKING LEVEL ${game4.level}...`;
+        display.innerText = "";
+        display.style.color = "#00ff00";
+        
+        let i = 0;
+        const interval = setInterval(() => {
+            if(i < game4.sequence.length) {
+                display.innerText = game4.sequence[i];
+                i++;
+            } else {
+                clearInterval(interval);
+                display.innerText = "_";
+                setTimeout(game4.showInputPhase, 500);
+            }
+        }, 800);
+    },
+
+    showInputPhase: () => {
+        const grid = document.getElementById('memory-grid');
+        const instruction = document.getElementById('memory-instruction');
+        
+        instruction.innerText = "INSIRA A CHAVE:";
+        grid.innerHTML = '';
+        grid.classList.remove('hidden');
+
+        // Generate options: Correct sequence shuffled with noise
+        let options = [...game4.sequence];
+        // Add some noise characters
+        while(options.length < 9) {
+            options.push('0123456789ABCDEF'[Math.floor(Math.random()*16)]);
+        }
+        options.sort(() => Math.random() - 0.5);
+
+        options.forEach(char => {
+            const btn = document.createElement('button');
+            btn.className = 'hacker-btn';
+            btn.innerText = char;
+            btn.onclick = () => game4.handleInput(char, btn);
+            grid.appendChild(btn);
+        });
+    },
+
+    handleInput: (char, btn) => {
+        const expected = game4.sequence[game4.playerSequence.length];
+        if (char === expected) {
+            game4.playerSequence.push(char);
+            btn.style.background = "#003300";
+            document.getElementById('memory-display').innerText = game4.playerSequence.join('');
+            
+            if (game4.playerSequence.length === game4.sequence.length) {
+                if (game4.level >= 3) {
+                    game.victory("SISTEMA INVADIDO!");
+                } else {
+                    game4.level++;
+                    setTimeout(game4.startRound, 1000);
+                }
+            }
+        } else {
+            game.gameOver("ACESSO NEGADO");
+        }
+    },
+
+    draw: () => {
+        // Hacker background managed by CSS mostly, but we can add matrix rain here if wanted
+        // Keeping it simple to focus on DOM UI
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0,0,360,640);
+        drawFace(180, 550, 40);
+    }
+};
+
+// --- MAIN CONTROLLER ---
+const game = {
+    start: (id) => {
+        state.currentGame = id;
+        state.screen = 'GAME';
+        
+        document.getElementById('menu-screen').classList.add('hidden');
+        document.getElementById('result-screen').classList.add('hidden');
+        document.getElementById('global-back-btn').classList.remove('hidden');
+        
+        // Hide all game UIs
+        document.getElementById('generic-controls').classList.add('hidden');
+        document.getElementById('tetris-ui').classList.add('hidden');
+        document.getElementById('memory-ui').classList.add('hidden');
+        document.getElementById('memory-ui').style.display = 'none';
+
+        if(id === 1) game1.init();
+        if(id === 2) game2.init();
+        if(id === 3) game3.init();
+        if(id === 4) game4.init();
+    },
+
+    gameOver: (msg) => {
+        game.stopAll();
+        state.screen = 'RESULT';
+        document.getElementById('result-title').innerText = "FALHOU";
+        document.getElementById('result-title').className = "text-3xl mb-4 text-red-500";
+        document.getElementById('result-msg').innerText = msg;
+        document.getElementById('result-screen').classList.remove('hidden');
+    },
+
+    victory: (msg) => {
+        game.stopAll();
+        playWinSound();
+        state.screen = 'RESULT';
+        document.getElementById('result-title').innerText = "SUCESSO!";
+        document.getElementById('result-title').className = "text-3xl mb-4 text-green-500";
+        document.getElementById('result-msg').innerText = msg;
+        document.getElementById('result-screen').classList.remove('hidden');
+    },
+
+    toMenu: () => {
+        game.stopAll();
+        state.screen = 'MENU';
+        document.getElementById('menu-screen').classList.remove('hidden');
+        document.getElementById('result-screen').classList.add('hidden');
+        document.getElementById('global-back-btn').classList.add('hidden');
+    },
+    
+    stopAll: () => {
+        game1.active = false;
+        game2.active = false;
+        game3.active = false;
+        game4.active = false;
+        document.getElementById('generic-controls').classList.add('hidden');
+        document.getElementById('tetris-ui').classList.add('hidden');
+        document.getElementById('memory-ui').classList.add('hidden');
+        document.getElementById('memory-ui').style.display = 'none';
+    }
+};
+
+// --- LOOP ---
+function loop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (state.screen === 'GAME') {
+        if (state.currentGame === 1) { game1.update(); game1.draw(); }
+        if (state.currentGame === 2) { game2.update(); game2.draw(); }
+        if (state.currentGame === 3) { game3.update(); game3.draw(); }
+        if (state.currentGame === 4) { game4.draw(); }
+    } else {
+        // Menu BG
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0,0,360,640);
+        // Animated Grid
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        const time = Date.now() / 1000;
+        for(let i=0; i<20; i++) {
+            let y = (time * 50 + i * 40) % 640;
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(360, y); ctx.stroke();
+        }
+        ctx.beginPath(); ctx.moveTo(180, 0); ctx.lineTo(180, 640); ctx.stroke();
+    }
+
+    requestAnimationFrame(loop);
+}
+
+loop();
+
+</script>
+</body>
+</html>
